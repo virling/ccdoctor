@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-27
+
 ### Added
 
 - MCP servers shipped by enabled plugins are checked and probed.
@@ -18,5 +20,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - Warns when an MCP server is registered but the hooks it ships are missing.
 - `--json` output; exit code 1 when any check fails.
 
-[Unreleased]: https://github.com/virling/ccdoctor/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/virling/ccdoctor/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/virling/ccdoctor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/virling/ccdoctor/releases/tag/v0.1.0
