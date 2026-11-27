@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { doctor, format } from "../src/checks.js";
+import { doctor, format, hookOutput } from "../src/checks.js";
 import { paths } from "../src/config.js";
 import { FAKE_SERVER, tmp, write } from "./helpers.js";
 
@@ -104,4 +105,32 @@ test("project config is found when run from a subfolder", async () => {
   assert.equal(find(results, "Settings", "project root").name, "project root ~/proj");
   assert.equal(find(results, "MCP servers", "local (local)").level, "ok");
   assert.equal(find(results, "MCP servers", "shared (project)").level, "ok");
+});
+
+test("hook mode is silent when all is well and warns otherwise", async () => {
+  const { config, p } = setup();
+  write(path.join(config, "settings.json"), {});
+  assert.equal(hookOutput(await doctor(p)), null);
+  write(path.join(config, ".claude.json"), { mcpServers: { agentmem: { command: "node", args: [path.join(config, "settings.json")] } } });
+  const out = hookOutput(await doctor(p));
+  assert.match(out.systemMessage, /^ccdoctor: 1 problem in your Claude Code setup\. warn Wiring: agentmem: MCP server registered but its hooks are missing\./);
+  assert.equal(out.hookSpecificOutput.hookEventName, "SessionStart");
+  assert.match(out.hookSpecificOutput.additionalContext, /Tell the user/);
+});
+
+test("hook command reads cwd from stdin and prints nothing when clean", () => {
+  const { home, cwd, config } = setup();
+  write(path.join(config, "settings.json"), {});
+  const bin = new URL("../bin/ccdoctor.js", import.meta.url).pathname;
+  const env = { ...process.env, CLAUDE_CONFIG_DIR: config, HOME: home };
+  assert.equal(execFileSync("node", [bin, "hook"], { input: JSON.stringify({ cwd }), env, encoding: "utf8" }), "");
+  write(path.join(cwd, ".claude", "settings.json"), "{ nope");
+  const out = JSON.parse(execFileSync("node", [bin, "hook"], { input: JSON.stringify({ cwd }), env, encoding: "utf8" }));
+  assert.match(out.systemMessage, /invalid JSON/);
+});
+
+test("plugin manifest matches package.json and its hook runs ccdoctor", () => {
+  const read = (f) => JSON.parse(fs.readFileSync(new URL(`../${f}`, import.meta.url), "utf8"));
+  assert.equal(read(".claude-plugin/plugin.json").version, read("package.json").version);
+  assert.match(read("hooks/hooks.json").hooks.SessionStart[0].hooks[0].command, /bin\/ccdoctor\.js" hook$/);
 });

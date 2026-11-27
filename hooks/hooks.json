@@ -1,0 +1,16 @@
+{
+  "description": "ccdoctor hooks",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/ccdoctor.js\" hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

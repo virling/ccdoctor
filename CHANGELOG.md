@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Claude Code plugin: `/plugin install ccdoctor@virling` runs the checks at every session start and warns only when something is broken.
+- `ccdoctor hook`: the SessionStart hook mode behind the plugin.
+
 ## [0.2.0] - 2026-11-27
 
 ### Added

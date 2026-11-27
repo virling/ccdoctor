@@ -7,7 +7,8 @@
     "ccdoctor": "bin/ccdoctor.js"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "version": "node scripts/sync-version.js && git add .claude-plugin"
   },
   "engines": {
     "node": ">=20"
@@ -21,11 +22,11 @@
     "diagnostics"
   ],
   "files": [
-    "bin",
-    "src",
-    "README.md",
+    "CHANGELOG.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "README.md",
+    "bin",
+    "src"
   ],
   "publishConfig": {
     "access": "public"

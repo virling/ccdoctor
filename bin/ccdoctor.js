@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { doctor, format, summary } from "../src/checks.js";
+import { doctor, format, hookOutput, summary } from "../src/checks.js";
 import { paths } from "../src/config.js";
 
 const HELP = `ccdoctor: check a Claude Code setup for broken or unwired pieces
@@ -8,6 +8,7 @@ const HELP = `ccdoctor: check a Claude Code setup for broken or unwired pieces
   ccdoctor --probe          also start each stdio MCP server and list its tools
   ccdoctor --timeout <s>    probe timeout in seconds (default 10)
   ccdoctor --json           print results as JSON
+  ccdoctor hook             SessionStart hook mode: prints a warning only when something is wrong
   ccdoctor --help
 
 Reads ~/.claude (or CLAUDE_CONFIG_DIR), ~/.claude.json and the current folder's
@@ -17,6 +18,14 @@ const args = process.argv.slice(2);
 const flags = new Set(args);
 if (flags.has("--help") || flags.has("-h")) {
   console.log(HELP);
+  process.exit(0);
+}
+if (args[0] === "hook") {
+  let raw = "";
+  for await (const chunk of process.stdin) raw += chunk;
+  const cwd = (raw.trim() && JSON.parse(raw).cwd) || process.cwd();
+  const out = hookOutput(await doctor(paths({ cwd })));
+  if (out) process.stdout.write(JSON.stringify(out));
   process.exit(0);
 }
 const ti = args.indexOf("--timeout");

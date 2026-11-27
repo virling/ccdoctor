@@ -16,6 +16,17 @@ Run it from your project, or any folder inside it. ccdoctor walks up to the proj
 npx @virling/ccdoctor
 ```
 
+### Check every session automatically
+
+Install it as a Claude Code plugin and it runs at the start of every session. It stays silent when everything is fine, and when something is broken you see a one-line warning and Claude is told the details:
+
+```
+/plugin marketplace add virling/agentmem
+/plugin install ccdoctor@virling
+```
+
+The session-start check skips `--probe`, so it only reads files and finishes in well under a second.
+
 ## Example
 
 ```

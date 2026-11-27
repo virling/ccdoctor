@@ -117,6 +117,19 @@ export function summary(results) {
   return { ok: count("ok"), warn: count("warn"), fail: count("fail") };
 }
 
+export function hookOutput(results) {
+  const problems = results.filter((r) => r.level !== "ok" && r.level !== "info");
+  if (!problems.length) return null;
+  const list = problems.map((r) => `${r.level} ${r.section}: ${r.name}${r.detail ? `: ${r.detail}` : ""}`);
+  return {
+    systemMessage: `ccdoctor: ${problems.length} problem${problems.length === 1 ? "" : "s"} in your Claude Code setup. ${list[0]}${problems.length > 1 ? ` (and ${problems.length - 1} more)` : ""}. Run npx @virling/ccdoctor for details.`,
+    hookSpecificOutput: {
+      hookEventName: "SessionStart",
+      additionalContext: `ccdoctor found problems in this Claude Code setup. Tell the user about them before starting other work:\n${list.join("\n")}`,
+    },
+  };
+}
+
 export function format(results) {
   const lines = [];
   for (const section of new Set(results.map((r) => r.section))) {
