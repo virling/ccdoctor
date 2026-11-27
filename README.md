@@ -63,6 +63,13 @@ ccdoctor --help
 
 ccdoctor never writes to your configuration.
 
+## More tools from Virling
+
+- [agentmem](https://github.com/virling/agentmem): project memory for AI coding agents, shared across Claude Code, Cursor, Codex and other MCP clients.
+- [ciwhy](https://github.com/virling/ciwhy): finds the real error in a failed GitHub Actions run and tells you if it is flaky.
+- [npmship](https://github.com/virling/npmship): releases an npm package and verifies it landed on npm, in CI and on GitHub.
+- [subagents](https://github.com/virling/subagents): reviews what Claude Code subagents did in a session and flags repeated or wasted work.
+
 ## License
 
 [PolyForm Noncommercial 1.0.0](LICENSE)
