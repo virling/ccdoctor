@@ -1,6 +1,6 @@
 {
   "name": "ccdoctor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Warns at session start when your Claude Code hooks, MCP servers or plugins are broken or not wired up",
   "author": {
     "name": "Virling",
