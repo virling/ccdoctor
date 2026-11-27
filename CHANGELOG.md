@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- MCP servers shipped by enabled plugins are checked and probed.
+- Run from any folder inside a project: ccdoctor walks up to the project folder Claude Code keys its config by.
+
 ## [0.1.0] - 2026-11-27
 
 ### Added

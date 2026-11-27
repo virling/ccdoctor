@@ -10,7 +10,7 @@ Typical catch: an MCP server is registered but the hooks that make it useful are
 
 ## Install
 
-Run it from the project folder you open Claude Code in:
+Run it from your project, or any folder inside it. ccdoctor walks up to the project folder Claude Code uses:
 
 ```bash
 npx @virling/ccdoctor
@@ -46,7 +46,7 @@ Exit code is 1 when any check fails.
 
 - **Settings.** `~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR/settings.json`), and `.claude/settings.json` and `.claude/settings.local.json` in the current folder. Invalid JSON fails.
 - **Hooks.** Every `command` hook in those files. The executable must exist on `PATH` or as a file (`~` and `$CLAUDE_PROJECT_DIR` are expanded). For `node`, `bash`, `python3` and similar, the script path must exist too. A script run directly without the executable bit warns. Only the first command of a shell line is checked.
-- **MCP servers.** User scope (`mcpServers` in `~/.claude.json`), local scope (`projects[<this folder>].mcpServers` in `~/.claude.json`) and project scope (`.mcp.json`). For stdio servers the command must resolve. A name defined in more than one scope warns. `env` values, headers and URLs are never printed.
+- **MCP servers.** User scope (`mcpServers` in `~/.claude.json`), local scope (`projects[<this folder>].mcpServers` in `~/.claude.json`) project scope (`.mcp.json`), and servers shipped by enabled plugins (their `.mcp.json` or `mcpServers` in `.claude-plugin/plugin.json`, with `${CLAUDE_PLUGIN_ROOT}` expanded). For stdio servers the command must resolve. A name defined in more than one scope warns. `env` values, headers and URLs are never printed.
 - **Plugins.** Each plugin set to `true` in `enabledPlugins` must have a folder under `~/.claude/plugins/cache/<marketplace>/<plugin>/`. Missing ones warn.
 - **Wiring.** A stdio MCP server named `agentmem`, or whose package ships `hooks/hooks.json`, warns when no hook command (in settings or enabled plugins) mentions its name or package folder.
 - **Probe** (`--probe`). Starts each stdio server, sends `initialize`, `notifications/initialized` and `tools/list`, reports the tool count or the error, then kills it. http and sse servers are not probed.

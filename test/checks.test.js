@@ -78,3 +78,30 @@ test("MCP server whose package ships hooks warns until a hook references it", as
   assert.equal(find(results, "Wiring", "mytool").level, "ok");
   assert.equal(find(results, "Wiring", "agentmem").level, "ok");
 });
+
+test("MCP servers shipped by enabled plugins are checked and probed", async () => {
+  const { config, p } = setup();
+  const dir = path.join(config, "plugins", "cache", "market", "tool", "1.0.0");
+  write(path.join(config, "settings.json"), { enabledPlugins: { "tool@market": true } });
+  write(path.join(dir, "server.js"), FAKE_SERVER);
+  write(path.join(dir, ".mcp.json"), { mcpServers: { live: { command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/server.js"] } } });
+  write(path.join(dir, ".claude-plugin", "plugin.json"), { mcpServers: "./extra.json" });
+  write(path.join(dir, "extra.json"), { mcpServers: { broken: { command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/gone.js"] } } });
+  const results = await doctor(p, { probe: true });
+  assert.equal(find(results, "MCP servers", "live (plugin tool@market)").level, "ok");
+  assert.equal(find(results, "MCP servers", "broken (plugin tool@market)").level, "fail");
+  assert.equal(find(results, "Probe", "live (plugin tool@market)").detail, "2 tools");
+});
+
+test("project config is found when run from a subfolder", async () => {
+  const { home, cwd, config, p } = setup();
+  write(path.join(home, ".claude.json"), {});
+  write(path.join(config, ".claude.json"), { projects: { [cwd]: { mcpServers: { local: { command: "node" } } } } });
+  write(path.join(cwd, ".mcp.json"), { mcpServers: { shared: { command: "node" } } });
+  const sub = path.join(cwd, "src", "deep");
+  fs.mkdirSync(sub, { recursive: true });
+  const results = await doctor({ ...p, cwd: sub });
+  assert.equal(find(results, "Settings", "project root").name, "project root ~/proj");
+  assert.equal(find(results, "MCP servers", "local (local)").level, "ok");
+  assert.equal(find(results, "MCP servers", "shared (project)").level, "ok");
+});

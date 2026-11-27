@@ -26,6 +26,20 @@ export function settingsFiles(p) {
   return files.filter((f, i) => files.findIndex((g) => g.file === f.file) === i);
 }
 
+// Claude Code keys project config by the folder it was started in, so walk up from a subfolder to find it.
+export function projectRoot(p, known = []) {
+  for (let dir = p.cwd; dir !== path.dirname(dir) && dir !== p.home; dir = path.dirname(dir)) {
+    if (known.includes(dir) || fs.existsSync(path.join(dir, ".mcp.json")) || fs.existsSync(path.join(dir, ".claude"))) return dir;
+  }
+  return p.cwd;
+}
+
+export function pluginServers(dir) {
+  const manifest = readJson(path.join(dir, ".claude-plugin", "plugin.json")).data?.mcpServers;
+  const fromManifest = typeof manifest === "string" ? readJson(path.join(dir, manifest)).data?.mcpServers : manifest;
+  return { ...readJson(path.join(dir, ".mcp.json")).data?.mcpServers, ...fromManifest };
+}
+
 export function pluginDir(configDir, key) {
   const installed = readJson(path.join(configDir, "plugins", "installed_plugins.json")).data?.plugins?.[key]?.[0]?.installPath;
   if (installed && fs.existsSync(installed)) return installed;

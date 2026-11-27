@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { checkCommand, expand, isFile, tokenize } from "./command.js";
-import { pluginDir, readJson, settingsFiles } from "./config.js";
+import { pluginDir, pluginServers, projectRoot, readJson, settingsFiles } from "./config.js";
 import { probe } from "./probe.js";
 
 function packageRoot(file) {
@@ -26,6 +26,10 @@ export async function doctor(p, { probe: doProbe = false, timeout = 10000 } = {}
   const results = [];
   const short = (s) => s.split(p.home).join("~");
   const add = (section, level, name, detail = "") => results.push({ section, level, name: short(name), detail: short(detail) });
+  const claudeJson = readJson(p.claudeJson);
+  const root = projectRoot(p, Object.keys(claudeJson.data?.projects || {}));
+  if (root !== p.cwd) add("Settings", "info", `project root ${root}`);
+  p = { ...p, cwd: root };
   const ctx = { cwd: p.cwd, home: p.home, PATH: p.PATH, vars: { ...p.env, CLAUDE_PROJECT_DIR: p.cwd } };
 
   const settings = settingsFiles(p).map((f) => ({ ...f, ...readJson(f.file) })).filter((f) => !f.missing);
@@ -43,15 +47,18 @@ export async function doctor(p, { probe: doProbe = false, timeout = 10000 } = {}
   }
   if (!commands.length) add("Hooks", "info", "no hooks configured");
 
+  const enabled = Object.assign({}, ...valid.map((s) => s.data.enabledPlugins || {}));
+  const plugins = Object.keys(enabled).filter((k) => enabled[k] === true).map((key) => ({ key, dir: pluginDir(p.configDir, key) }));
+
   const servers = [];
-  const collect = (map, scope) => Object.entries(map || {}).forEach(([name, config]) => servers.push({ name, scope, config }));
-  const claudeJson = readJson(p.claudeJson);
+  const collect = (map, scope, vars = {}) => Object.entries(map || {}).forEach(([name, config]) => servers.push({ name, scope, config, vars }));
   const mcpJson = readJson(path.join(p.cwd, ".mcp.json"));
   if (claudeJson.error) add("MCP servers", "fail", p.claudeJson, `invalid JSON: ${claudeJson.error}`);
   if (mcpJson.error) add("MCP servers", "fail", path.join(p.cwd, ".mcp.json"), `invalid JSON: ${mcpJson.error}`);
   collect(claudeJson.data?.mcpServers, "user");
   collect(claudeJson.data?.projects?.[p.cwd]?.mcpServers, "local");
   collect(mcpJson.data?.mcpServers, "project");
+  for (const pl of plugins.filter((pl) => pl.dir)) collect(pluginServers(pl.dir), `plugin ${pl.key}`, { CLAUDE_PLUGIN_ROOT: pl.dir });
   if (!servers.length) add("MCP servers", "info", "no MCP servers registered");
 
   const stdio = [];
@@ -61,12 +68,12 @@ export async function doctor(p, { probe: doProbe = false, timeout = 10000 } = {}
       add("MCP servers", "info", `${s.name} (${s.scope}, ${type})`, "remote, not checked");
       continue;
     }
-    const r = checkCommand([s.config.command ?? "", ...(s.config.args || [])], ctx);
+    const r = checkCommand([s.config.command ?? "", ...(s.config.args || [])], { ...ctx, vars: { ...ctx.vars, ...s.vars } });
     add("MCP servers", r.level, `${s.name} (${s.scope})`, r.detail);
     stdio.push(Object.assign(s, { check: r }));
   }
   for (const name of new Set(servers.map((s) => s.name))) {
-    const list = servers.filter((s) => s.name === name);
+    const list = servers.filter((s) => s.name === name && !s.scope.startsWith("plugin"));
     if (list.length > 1) add("MCP servers", "warn", name, `defined more than once: ${list.map((s) => s.scope).join(", ")}`);
   }
 
@@ -75,10 +82,11 @@ export async function doctor(p, { probe: doProbe = false, timeout = 10000 } = {}
     const runnable = stdio.filter((s) => s.check.level !== "fail");
     const probed = await Promise.all(
       runnable.map((s) => {
-        const env = { ...p.env };
-        for (const [k, v] of Object.entries(s.config.env || {})) env[k] = expand(String(v), p.env, p.home);
-        const args = (s.config.args || []).map((a) => expand(a, p.env, p.home));
-        return probe(expand(s.config.command, p.env, p.home), args, { cwd: p.cwd, env, timeout });
+        const vars = { ...p.env, ...s.vars };
+        const env = { ...vars };
+        for (const [k, v] of Object.entries(s.config.env || {})) env[k] = expand(String(v), vars, p.home);
+        const args = (s.config.args || []).map((a) => expand(a, vars, p.home));
+        return probe(expand(s.config.command, vars, p.home), args, { cwd: p.cwd, env, timeout });
       })
     );
     runnable.forEach((s, i) => {
@@ -88,16 +96,13 @@ export async function doctor(p, { probe: doProbe = false, timeout = 10000 } = {}
     for (const s of stdio.filter((s) => !runnable.includes(s))) add("Probe", "info", s.name, "not probed (command not found)");
   }
 
-  const enabled = Object.assign({}, ...valid.map((s) => s.data.enabledPlugins || {}));
-  const keys = Object.keys(enabled).filter((k) => enabled[k] === true);
-  if (!keys.length) add("Plugins", "info", "no plugins enabled");
-  for (const key of keys) {
-    const dir = pluginDir(p.configDir, key);
+  if (!plugins.length) add("Plugins", "info", "no plugins enabled");
+  for (const { key, dir } of plugins) {
     add("Plugins", dir ? "ok" : "warn", key, dir ? "" : "enabled but not found in plugins/cache");
     if (dir) commands.push(...hookCommands(readJson(path.join(dir, "hooks", "hooks.json")).data?.hooks).map((h) => h.command));
   }
 
-  for (const s of stdio) {
+  for (const s of stdio.filter((s) => !s.scope.startsWith("plugin"))) {
     const root = packageRoot(s.check.files.at(-1));
     const shipsHooks = root && isFile(path.join(root, "hooks", "hooks.json"));
     if (s.name !== "agentmem" && !shipsHooks) continue;
