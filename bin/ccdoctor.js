@@ -23,7 +23,11 @@ if (flags.has("--help") || flags.has("-h")) {
 if (args[0] === "hook") {
   let raw = "";
   for await (const chunk of process.stdin) raw += chunk;
-  const cwd = (raw.trim() && JSON.parse(raw).cwd) || process.cwd();
+  let input = {};
+  try {
+    input = JSON.parse(raw);
+  } catch {}
+  const cwd = input?.cwd || process.cwd();
   const out = hookOutput(await doctor(paths({ cwd })));
   if (out) process.stdout.write(JSON.stringify(out));
   process.exit(0);
@@ -31,7 +35,7 @@ if (args[0] === "hook") {
 const ti = args.indexOf("--timeout");
 const timeout = ti >= 0 ? Number(args[ti + 1]) * 1000 : 10000;
 const unknown = args.filter((a, i) => !["--probe", "--json", "--timeout"].includes(a) && !(ti >= 0 && i === ti + 1));
-if (unknown.length || !(timeout > 0)) {
+if (unknown.length || !(timeout > 0 && timeout <= 2147483647)) {
   console.error(unknown.length ? `Unknown option: ${unknown[0]}\n\n${HELP}` : "--timeout needs a number of seconds");
   process.exit(2);
 }

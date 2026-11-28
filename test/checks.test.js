@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
@@ -199,4 +199,21 @@ test("subagent transcripts count toward outside reads", async () => {
   ]).flat().map((e) => JSON.stringify(e)).join("\n");
   write(path.join(config, "projects", cwd.replace(/[^a-zA-Z0-9]/g, "-"), "s1", "subagents", "agent-1.jsonl"), lines);
   assert.equal(find(await doctor(p), "Permissions", "~/other").level, "warn");
+});
+
+test("CLI exit codes, JSON output and bad hook input", () => {
+  const { home, cwd, config } = setup();
+  const bin = new URL("../bin/ccdoctor.js", import.meta.url).pathname;
+  const env = { ...process.env, CLAUDE_CONFIG_DIR: config, HOME: home };
+  const run = (args, input) => spawnSync("node", [bin, ...args], { cwd, env, input, encoding: "utf8" });
+  assert.equal(run(["--nope"]).status, 2);
+  assert.equal(run(["--timeout", "abc"]).status, 2);
+  assert.equal(run(["--timeout", "3000000"]).status, 2);
+  write(path.join(config, "settings.json"), {});
+  const ok = run(["--json"]);
+  assert.equal(ok.status, 0);
+  assert.deepEqual(Object.keys(JSON.parse(ok.stdout)), ["results", "summary"]);
+  write(path.join(cwd, ".claude", "settings.json"), "{ nope");
+  assert.equal(run([]).status, 1);
+  assert.equal(run(["hook"], "not json").status, 0);
 });
