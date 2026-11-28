@@ -18,7 +18,7 @@ function packageRoot(file) {
 function hookCommands(hooks = {}) {
   return Object.entries(hooks).flatMap(([event, groups]) =>
     (Array.isArray(groups) ? groups : []).flatMap((g) =>
-      (g.hooks || []).filter((h) => h.type === "command").map((h) => ({ event, command: h.command }))
+      (Array.isArray(g?.hooks) ? g.hooks : []).filter((h) => h?.type === "command").map((h) => ({ event, command: h.command }))
     )
   );
 }
@@ -41,9 +41,14 @@ export async function doctor(p, { probe: doProbe = false, timeout = 10000 } = {}
   const commands = [];
   for (const s of valid) {
     for (const h of hookCommands(s.data.hooks)) {
+      if (typeof h.command !== "string" || !h.command.trim()) {
+        add("Hooks", "fail", `${h.event} [${s.scope}]`, "hook has no command");
+        continue;
+      }
       commands.push(h.command);
-      const r = checkCommand(tokenize(h.command), ctx);
-      add("Hooks", r.level, `${h.event} [${s.scope}] ${h.command}`, r.level === "ok" ? "" : r.detail);
+      const tokens = tokenize(h.command);
+      const r = checkCommand(tokens, ctx);
+      add("Hooks", r.level, `${h.event} [${s.scope}] ${tokens.find((t) => !/^\w+=/.test(t)) ?? ""}`, r.level === "ok" ? "" : r.detail);
     }
   }
   if (!commands.length) add("Hooks", "info", "no hooks configured");
@@ -64,12 +69,20 @@ export async function doctor(p, { probe: doProbe = false, timeout = 10000 } = {}
 
   const stdio = [];
   for (const s of servers) {
+    if (!s.config || typeof s.config !== "object") {
+      add("MCP servers", "fail", `${s.name} (${s.scope})`, "invalid server config");
+      continue;
+    }
     const type = s.config.type || (s.config.url ? "http" : "stdio");
     if (type !== "stdio") {
       add("MCP servers", "info", `${s.name} (${s.scope}, ${type})`, "remote, not checked");
       continue;
     }
-    const r = checkCommand([s.config.command ?? "", ...(s.config.args || [])], { ...ctx, vars: { ...ctx.vars, ...s.vars } });
+    if (typeof s.config.command !== "string" || !s.config.command) {
+      add("MCP servers", "fail", `${s.name} (${s.scope})`, "no command");
+      continue;
+    }
+    const r = checkCommand([s.config.command, ...(s.config.args || [])], { ...ctx, vars: { ...ctx.vars, ...s.vars } });
     add("MCP servers", r.level, `${s.name} (${s.scope})`, r.detail);
     stdio.push(Object.assign(s, { check: r }));
   }

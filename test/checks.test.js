@@ -155,3 +155,25 @@ test("folders read outside the project in recent sessions warn unless already ad
   assert.deepEqual(results.map((r) => [r.level, r.name]), [["info", "10 permission prompts approved by hand in the last 7 days"], ["warn", "~/other"]]);
   assert.match(results[1].detail, /5 prompts for reads outside the project/);
 });
+
+test("malformed hooks and servers are reported instead of crashing", async () => {
+  const { config, p } = setup();
+  write(path.join(config, "settings.json"), {
+    hooks: { SessionStart: [{ hooks: [{ type: "command" }] }, { hooks: { type: "command", command: "x" } }, null] },
+  });
+  write(path.join(config, ".claude.json"), { mcpServers: { bad: null, nocmd: { type: "stdio" } } });
+  const results = await doctor(p);
+  assert.equal(find(results, "Hooks", "SessionStart").detail, "hook has no command");
+  assert.equal(find(results, "MCP servers", "bad (user)").detail, "invalid server config");
+  assert.equal(find(results, "MCP servers", "nocmd (user)").detail, "no command");
+});
+
+test("hook names never include arguments or inline secrets", async () => {
+  const { config, p } = setup();
+  write(path.join(config, "settings.json"), {
+    hooks: { SessionStart: [{ hooks: [{ type: "command", command: "API_TOKEN=sk-SECRET no-such-tool-xyz -H 'Authorization: Bearer ghp_SECRET'" }] }] },
+  });
+  const results = await doctor(p);
+  assert.equal(find(results, "Hooks", "SessionStart").name, "SessionStart [user] no-such-tool-xyz");
+  assert.doesNotMatch(format(results), /SECRET/);
+});
