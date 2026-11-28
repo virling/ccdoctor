@@ -6,7 +6,7 @@ const BUILTINS = new Set(["echo", "printf", "true", "false", "test", "[", "cd", 
 
 export const isFile = (f) => !!fs.statSync(f, { throwIfNoEntry: false })?.isFile();
 
-export function canRun(f) {
+function canRun(f) {
   try {
     fs.accessSync(f, fs.constants.X_OK);
     return true;
@@ -43,7 +43,7 @@ export function tokenize(cmd) {
 export const expand = (s, vars, home) =>
   s.replace(/^~(?=\/|$)/, home).replace(/\$\{(\w+)(?::-([^}]*))?\}|\$(\w+)/g, (m, a, def, b) => vars[a || b] ?? def ?? m);
 
-export function which(exe, { PATH, cwd }) {
+function which(exe, { PATH, cwd }) {
   if (exe.includes("/")) {
     const f = path.resolve(cwd, exe);
     return isFile(f) ? f : null;
@@ -55,12 +55,9 @@ export function which(exe, { PATH, cwd }) {
   return null;
 }
 
-function scriptArg(args) {
-  for (const a of args) {
-    if (["-c", "-e", "-m", "-p", "--eval"].includes(a)) return null;
-    if (!a.startsWith("-") && a !== "run") return a;
-  }
-  return null;
+function scriptArg([first, second]) {
+  const script = first === "run" ? second : first;
+  return script && !script.startsWith("-") && script !== "x" ? script : null;
 }
 
 export function checkCommand(tokens, ctx) {

@@ -37,3 +37,14 @@ test("checkCommand warns when a script run directly is not executable", () => {
   fs.chmodSync(f, 0o755);
   assert.equal(checkCommand(tokenize(`"$CLAUDE_PROJECT_DIR"/hook.sh`), ctx(dir)).level, "ok");
 });
+
+test("option values are not mistaken for scripts", () => {
+  const dir = tmp();
+  write(path.join(dir, "server.js"), "");
+  for (const args of [["--import", "tsx", "server.js"], ["--token", "ghp_SECRET", "srv.js"], ["run", "server.js"]]) {
+    const r = checkCommand(["node", ...args], ctx(dir));
+    assert.equal(r.level, "ok", args.join(" "));
+    assert.doesNotMatch(r.detail, /SECRET/);
+  }
+  assert.match(checkCommand(["node", "missing.js"], ctx(dir)).detail, /script not found/);
+});
