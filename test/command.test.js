@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { checkCommand, expand, tokenize } from "../src/command.js";
+import { pluginDir } from "../src/config.js";
 import { tmp, write } from "./helpers.js";
 
 const ctx = (cwd) => ({ cwd, home: cwd, PATH: process.env.PATH, vars: { CLAUDE_PROJECT_DIR: cwd } });
@@ -47,4 +48,14 @@ test("option values are not mistaken for scripts", () => {
     assert.doesNotMatch(r.detail, /SECRET/);
   }
   assert.match(checkCommand(["node", "missing.js"], ctx(dir)).detail, /script not found/);
+});
+
+test("plugin cache fallback picks the newest version folder", () => {
+  const config = tmp();
+  const base = path.join(config, "plugins", "cache", "mkt", "plug");
+  fs.mkdirSync(path.join(base, "0.10.0"), { recursive: true });
+  fs.mkdirSync(path.join(base, "0.9.0"), { recursive: true });
+  const old = new Date(Date.now() - 86400000);
+  fs.utimesSync(path.join(base, "0.10.0"), old, old);
+  assert.equal(pluginDir(config, "plug@mkt"), path.join(base, "0.9.0"));
 });

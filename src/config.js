@@ -46,6 +46,10 @@ export function pluginDir(configDir, key) {
   const [name, market = ""] = key.split("@");
   const dir = path.join(configDir, "plugins", "cache", market, name);
   if (!fs.existsSync(dir)) return null;
-  const versions = fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory());
-  return versions.length ? path.join(dir, versions[0].name) : null;
+  const versions = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => path.join(dir, d.name))
+    .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+  return versions[0] ?? null;
 }
