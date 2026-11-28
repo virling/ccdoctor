@@ -60,6 +60,7 @@ Exit code is 1 when any check fails.
 - **MCP servers.** User scope (`mcpServers` in `~/.claude.json`), local scope (`projects[<this folder>].mcpServers` in `~/.claude.json`) project scope (`.mcp.json`), and servers shipped by enabled plugins (their `.mcp.json` or `mcpServers` in `.claude-plugin/plugin.json`, with `${CLAUDE_PLUGIN_ROOT}` expanded). For stdio servers the command must resolve. A name defined in more than one scope warns. `env` values, headers and URLs are never printed.
 - **Plugins.** Each plugin set to `true` in `enabledPlugins` must have a folder under `~/.claude/plugins/cache/<marketplace>/<plugin>/`. Missing ones warn.
 - **Wiring.** A stdio MCP server named `agentmem`, or whose package ships `hooks/hooks.json`, warns when no hook command (in settings or enabled plugins) mentions its name or package folder.
+- **Permissions.** Reads this project's Claude Code transcripts from the last 7 days, including subagents, and counts the tool calls you approved by hand. A folder outside the project that caused 5 or more `outsideReadsBlocked` prompts warns, unless it is already in `permissions.additionalDirectories`. Add it there or with `/add-dir` to stop those prompts. For details per session, run `npx @virling/subagents`.
 - **Probe** (`--probe`). Starts each stdio server, sends `initialize`, `notifications/initialized` and `tools/list`, reports the tool count or the error, then kills it. http and sse servers are not probed.
 
 ## Options

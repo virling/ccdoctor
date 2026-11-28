@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { MIN_PROMPTS, outsideReads } from "./approvals.js";
 import { checkCommand, expand, isFile, tokenize } from "./command.js";
 import { pluginDir, pluginServers, projectRoot, readJson, settingsFiles } from "./config.js";
 import { probe } from "./probe.js";
@@ -109,6 +110,12 @@ export async function doctor(p, { probe: doProbe = false, timeout = 10000 } = {}
     const wired = commands.some((c) => c.includes(s.name) || (root && c.includes(root)));
     add("Wiring", wired ? "ok" : "warn", s.name, wired ? "hooks found" : "MCP server registered but its hooks are missing");
   }
+
+  const added = valid.flatMap((s) => s.data.permissions?.additionalDirectories || []).map((d) => path.resolve(p.cwd, expand(d, p.env, p.home)));
+  const reads = outsideReads(p, p.cwd, added);
+  if (reads.prompts) add("Permissions", "info", `${reads.prompts} permission prompts approved by hand in the last ${reads.days} days`);
+  for (const f of reads.folders.filter((f) => f.count >= MIN_PROMPTS))
+    add("Permissions", "warn", f.dir, `${f.count} prompts for reads outside the project in ${reads.days} days; add it to permissions.additionalDirectories or run /add-dir`);
   return results;
 }
 

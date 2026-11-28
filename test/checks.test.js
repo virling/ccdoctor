@@ -134,3 +134,24 @@ test("plugin manifest matches package.json and its hook runs ccdoctor", () => {
   assert.equal(read(".claude-plugin/plugin.json").version, read("package.json").version);
   assert.match(read("hooks/hooks.json").hooks.SessionStart[0].hooks[0].command, /bin\/ccdoctor\.js" hook$/);
 });
+
+test("folders read outside the project in recent sessions warn unless already added", async () => {
+  const { home, cwd, config, p } = setup();
+  const other = path.join(home, "other");
+  const added = path.join(home, "added");
+  fs.mkdirSync(path.join(other, ".git"), { recursive: true });
+  const lines = (dir, n, start) =>
+    Array.from({ length: n }, (_, i) => [
+      { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: `t${start + i}`, name: "Bash", input: { command: `sed -n 1,5p ${dir}/src/a.js` } }] } },
+      { type: "user", cwd, permissionDecision: { decision: "accept", source: "user_temporary", reasonCode: "outsideReadsBlocked" }, message: { role: "user", content: [{ type: "tool_result", tool_use_id: `t${start + i}`, content: "ok" }] } },
+    ]).flat().map((e) => JSON.stringify(e)).join("\n");
+  const dir = path.join(config, "projects", cwd.replace(/[^a-zA-Z0-9]/g, "-"));
+  write(path.join(dir, "s1.jsonl"), `${lines(other, 5, 0)}\n${lines(added, 5, 10)}\nnot json`);
+  write(path.join(dir, "old.jsonl"), lines(path.join(home, "stale"), 5, 20));
+  const old = new Date(Date.now() - 30 * 86400000);
+  fs.utimesSync(path.join(dir, "old.jsonl"), old, old);
+  write(path.join(cwd, ".claude", "settings.json"), { permissions: { additionalDirectories: ["~/added"] } });
+  const results = (await doctor(p)).filter((r) => r.section === "Permissions");
+  assert.deepEqual(results.map((r) => [r.level, r.name]), [["info", "10 permission prompts approved by hand in the last 7 days"], ["warn", "~/other"]]);
+  assert.match(results[1].detail, /5 prompts for reads outside the project/);
+});
