@@ -1,6 +1,6 @@
 {
   "name": "@virling/ccdoctor",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Check a Claude Code setup for broken hooks, MCP servers and plugins",
   "type": "module",
   "bin": {
