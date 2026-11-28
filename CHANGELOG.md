@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Permissions check: reads this project's transcripts from the last 7 days and warns about folders outside the project that caused 5 or more `outsideReadsBlocked` approval prompts, unless they are already in `permissions.additionalDirectories`.
+
 ## [0.3.0] - 2026-11-27
 
 ### Added
