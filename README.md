@@ -25,7 +25,7 @@ Install it as a Claude Code plugin and it runs at the start of every session. It
 /plugin install ccdoctor@virling
 ```
 
-The session-start check skips `--probe`, so it only reads files and finishes in well under a second.
+The session-start check skips `--probe` and skips transcripts over 50 MB, so it only reads files and usually finishes in under a second.
 
 ## Example
 
@@ -36,7 +36,7 @@ Settings
 
 Hooks
   ok    PreToolUse [user] ~/.claude/hooks/block-unsigned-push.sh
-  fail  SessionStart [user] node ~/tools/old.js hook: script not found: ~/tools/old.js
+  fail  SessionStart [user] node: script not found: ~/tools/old.js
 
 MCP servers
   ok    agentmem (user): ~/projects/memory/bin/agentmem.js
@@ -48,7 +48,7 @@ Plugins
 Wiring
   warn  agentmem: MCP server registered but its hooks are missing
 
-3 ok, 1 warn, 1 fail
+4 ok, 1 warn, 1 fail
 ```
 
 Exit code is 1 when any check fails.
@@ -70,6 +70,7 @@ ccdoctor                  check settings, hooks, MCP servers and plugins
 ccdoctor --probe          also start each stdio MCP server and list its tools
 ccdoctor --timeout <s>    probe timeout in seconds (default 10)
 ccdoctor --json           print results as JSON
+ccdoctor hook             SessionStart hook mode: prints a warning only when something is wrong
 ccdoctor --help
 ```
 
