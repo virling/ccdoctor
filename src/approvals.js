@@ -3,6 +3,7 @@ import path from "node:path";
 
 const DAYS = 7;
 export const MIN_PROMPTS = 5;
+const MAX_BYTES = 50 * 1024 * 1024;
 
 const transcriptDir = (configDir, root) => path.join(configDir, "projects", path.resolve(root).replace(/[^a-zA-Z0-9]/g, "-"));
 
@@ -15,7 +16,10 @@ function recentTranscripts(dir, since) {
     const sub = path.join(full, "subagents");
     if (e.isDirectory() && fs.existsSync(sub)) files.push(...fs.readdirSync(sub).filter((f) => f.endsWith(".jsonl")).map((f) => path.join(sub, f)));
   }
-  return files.filter((f) => fs.statSync(f).mtimeMs >= since);
+  return files.filter((f) => {
+    const st = fs.statSync(f);
+    return st.mtimeMs >= since && st.size <= MAX_BYTES;
+  });
 }
 
 function repoRoot(dir) {
@@ -23,7 +27,7 @@ function repoRoot(dir) {
   return dir;
 }
 
-export function folders(command, cwd, home) {
+function folders(command, cwd, home) {
   const cds = new Set([...command.matchAll(/(?:^|[;&|]\s*)cd\s+(\S+)/g)].map((m) => m[1]));
   const dirs = [];
   for (const m of command.matchAll(/(?:^|[\s=])(~?\/[^\s;&|'"`)]+)/g)) {
@@ -35,11 +39,11 @@ export function folders(command, cwd, home) {
 }
 
 // Folders that tool calls read outside the project in recent sessions, each needing a manual approval.
-export function outsideReads(p, root, added = [], now = Date.now()) {
+export function outsideReads(p, root, added = []) {
   const inside = (d) => [root, ...added].some((a) => d === a || d.startsWith(`${a}/`));
   const counts = new Map();
   let prompts = 0;
-  for (const file of recentTranscripts(transcriptDir(p.configDir, root), now - DAYS * 86400000)) {
+  for (const file of recentTranscripts(transcriptDir(p.configDir, root), Date.now() - DAYS * 86400000)) {
     const uses = new Map();
     for (const line of fs.readFileSync(file, "utf8").split("\n")) {
       if (!line.includes('"tool_use"') && !line.includes('"permissionDecision"')) continue;

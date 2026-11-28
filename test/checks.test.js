@@ -188,3 +188,15 @@ test("wiring matches the server name as a whole word", async () => {
   write(path.join(config, "settings.json"), { hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo memory" }] }] } });
   assert.equal(find(await doctor(p), "Wiring", "mem").level, "warn");
 });
+
+test("subagent transcripts count toward outside reads", async () => {
+  const { home, cwd, config, p } = setup();
+  const other = path.join(home, "other");
+  fs.mkdirSync(path.join(other, ".git"), { recursive: true });
+  const lines = Array.from({ length: 5 }, (_, i) => [
+    { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: `t${i}`, name: "Read", input: { file_path: `${other}/a.js` } }] } },
+    { type: "user", cwd, permissionDecision: { source: "user_temporary", reasonCode: "outsideReadsBlocked" }, message: { role: "user", content: [{ type: "tool_result", tool_use_id: `t${i}`, content: "ok" }] } },
+  ]).flat().map((e) => JSON.stringify(e)).join("\n");
+  write(path.join(config, "projects", cwd.replace(/[^a-zA-Z0-9]/g, "-"), "s1", "subagents", "agent-1.jsonl"), lines);
+  assert.equal(find(await doctor(p), "Permissions", "~/other").level, "warn");
+});
