@@ -12,8 +12,8 @@ test("probe counts tools from a stdio server", async () => {
 
 test("probe reports timeouts, exits and spawn errors", async () => {
   const dir = tmp();
-  const opts = { cwd: dir, env: process.env, timeout: 300 };
-  assert.match((await probe("node", ["-e", "setInterval(() => {}, 1000)"], opts)).error, /timed out/);
+  const opts = { cwd: dir, env: process.env };
+  assert.match((await probe("node", ["-e", "setInterval(() => {}, 1000)"], { ...opts, timeout: 300 })).error, /timed out/);
   assert.match((await probe("node", ["-e", "console.error('boom'); process.exit(3)"], opts)).error, /code 3: boom/);
   assert.match((await probe("no-such-binary-xyz", [], opts)).error, /ENOENT/);
 });
