@@ -120,7 +120,8 @@ export async function doctor(p, { probe: doProbe = false, timeout = 10000 } = {}
     const root = packageRoot(s.check.files.at(-1));
     const shipsHooks = root && isFile(path.join(root, "hooks", "hooks.json"));
     if (s.name !== "agentmem" && !shipsHooks) continue;
-    const wired = commands.some((c) => c.includes(s.name) || (root && c.includes(root)));
+    const name = new RegExp(`(^|[^\\w-])${s.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\w-])`);
+    const wired = commands.some((c) => name.test(c) || (root && c.includes(root)));
     add("Wiring", wired ? "ok" : "warn", s.name, wired ? "hooks found" : "MCP server registered but its hooks are missing");
   }
 

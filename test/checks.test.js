@@ -177,3 +177,14 @@ test("hook names never include arguments or inline secrets", async () => {
   assert.equal(find(results, "Hooks", "SessionStart").name, "SessionStart [user] no-such-tool-xyz");
   assert.doesNotMatch(format(results), /SECRET/);
 });
+
+test("wiring matches the server name as a whole word", async () => {
+  const { config, p } = setup();
+  const pkg = path.join(config, "pkg");
+  write(path.join(pkg, "package.json"), {});
+  write(path.join(pkg, "hooks", "hooks.json"), {});
+  const server = write(path.join(pkg, "server.js"), "");
+  write(path.join(config, ".claude.json"), { mcpServers: { mem: { command: "node", args: [server] } } });
+  write(path.join(config, "settings.json"), { hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo memory" }] }] } });
+  assert.equal(find(await doctor(p), "Wiring", "mem").level, "warn");
+});
