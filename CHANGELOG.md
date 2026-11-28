@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- Malformed config (a hook without a command, `hooks` that is not a list, a null MCP server, a stdio server without a command) is reported as a fail instead of crashing the run.
+- Hooks are shown by event, scope and executable only, so arguments and inline tokens never reach the output or the session-start message.
+- Option values such as `node --import tsx server.js` are no longer checked as script paths.
+- The Wiring check matches server names as whole words.
+- The Permissions check skips transcripts over 50 MB, so session start stays fast.
+- The plugin cache fallback picks the newest version folder.
+- `ccdoctor hook` accepts input that is not JSON, and `--timeout` rejects values too large for a timer.
+
 ## [0.4.0] - 2026-11-28
 
 ### Added
